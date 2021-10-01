@@ -21,7 +21,7 @@
 
         <!-- Dependencies versions -->
         <junit-jupiter.version>5.8.1</junit-jupiter.version>
-        <junit-platform-launcher>1.8.0</junit-platform-launcher>
+        <junit-platform-launcher>1.8.1</junit-platform-launcher>
         <selenium-java.version>3.141.59</selenium-java.version>
     </properties>
     <dependencies>

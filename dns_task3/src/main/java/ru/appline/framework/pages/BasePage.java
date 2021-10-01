@@ -1,5 +1,7 @@
 package ru.appline.framework.pages;
 
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.FindBy;
@@ -12,6 +14,7 @@ import ru.appline.framework.managers.TestPropManager;
 import ru.appline.framework.products.Product;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Базовый класс всех страничек
@@ -39,7 +42,7 @@ public class BasePage {
      *
      * @see WebDriverWait
      */
-    protected WebDriverWait wait = new WebDriverWait(driverManager.getDriver(), 10, 1000);
+    protected WebDriverWait wait = new WebDriverWait(driverManager.getDriver(), 7, 1000);
 
 
     /**
@@ -53,6 +56,8 @@ public class BasePage {
      * List всех добавленных продуктов
      */
     protected static ArrayList<Product> products = new ArrayList<>();
+
+    protected static ArrayList<Product> deletedProducts = new ArrayList<>();
 
 
     /**
@@ -68,11 +73,6 @@ public class BasePage {
     }
 
 
-
-
-
-
-
     /**
      * Явное ожидание состояния clickable элемента
      *
@@ -83,8 +83,13 @@ public class BasePage {
      * @see org.openqa.selenium.support.ui.Wait
      * @see ExpectedConditions
      */
-    protected WebElement waitUtilElementToBeClickable(WebElement element) {
-        return wait.until(ExpectedConditions.elementToBeClickable(element));
+    protected boolean waitUtilElementToBeClickable(WebElement element) {
+        try {
+            wait.until(ExpectedConditions.elementToBeClickable(element));
+            return true;
+        } catch (NoSuchElementException ex) {
+            return false;
+        }
     }
 
     /**
@@ -92,13 +97,56 @@ public class BasePage {
      *
      * @param element - веб элемент который мы ожидаем что будет  виден на странице
      */
-    protected WebElement waitUtilElementToBeVisible(WebElement element) {
-        return wait.until(ExpectedConditions.visibilityOf(element));
+    protected boolean waitUtilElementToBeVisible(WebElement element) {
+        try {
+            wait.until(ExpectedConditions.visibilityOf(element));
+            return true;
+        } catch (NoSuchElementException ex) {
+            return false;
+        }
     }
 
+    /**
+     * Явное ожидание что в элементе содержится текст
+     * @param element - веб элемент текст которого мы ожидаем что будет  виден на странице
+     * @param text - текс для проверки
+     * @return boolean
+     */
+    protected boolean waitUtilTextToBePresent(WebElement element, String text) {
+        try {
+            wait.until(ExpectedConditions.textToBePresentInElement(element, text));
+            return true;
+        } catch (TimeoutException ex) {
+            return false;
+        }
+    }
 
+    /**
+     * Явное ожидание что элемент пропал
+     * @param element - веб элемент который мы ожидаем что пропадет
+     * @return
+     */
+    protected boolean waitUtilElementNotToBeVisible(WebElement element) {
+        try {
+            wait.until(ExpectedConditions.invisibilityOf(element));
+            return true;
+        } catch (TimeoutException ex) {
+            return false;
+        }
+    }
 
+    /**
+     * Явное ожидание появления элемента с текстом в List
+     * @param list - все элементы страницы
+     * @param text - текст, который должен быть
+     * @return
+     */
+    protected boolean waitUtilElementToBeVisibleInList(List<WebElement> list, String text) {
+        for (WebElement element : list)
+            if (waitUtilTextToBePresent(element, text))
+                return true;
 
-
+        return false;
+    }
 
 }

@@ -79,6 +79,7 @@ public class PageManager {
         }
         return resultsPage;
     }
+
     /**
      * Ленивая инициализация {@link ProductPage}
      *
@@ -90,6 +91,7 @@ public class PageManager {
         }
         return productPage;
     }
+
     /**
      * Ленивая инициализация {@link CartPage}
      *

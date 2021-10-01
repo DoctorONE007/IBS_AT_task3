@@ -2,7 +2,6 @@ package ru.appline.framework.pages;
 
 import org.junit.jupiter.api.Assertions;
 import org.openqa.selenium.By;
-import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.FindBy;
 import ru.appline.framework.products.Product;
@@ -13,7 +12,7 @@ import java.util.List;
  * Реализация страницы корзины
  */
 public class CartPage extends BasePage {
-
+    //переписать xpath
     @FindBy(xpath = "//div[@id='total-amount']//span[@class='price__current']")
     private WebElement cartSumElement;
     @FindBy(xpath = "//div[@class='total-amount-toggler payment-method-discount-toggler']//span[@class ='total-amount-toggler__slider']")
@@ -28,82 +27,72 @@ public class CartPage extends BasePage {
     private List<WebElement> guarantyElements;
     @FindBy(xpath = "//div[@class='slider']//span[contains(@class,'checked')]/../..//span[@class='additional-warranties-row__price']")
     private List<WebElement> guarantyPriceElements;
-    @FindBy(xpath = "//div[@class='cart-items__product-code']")
-    private List<WebElement> listProductCodes;
-    @FindBy(xpath = "(//span[@class='restore-last-removed'])[2]")
+    @FindBy(xpath = "//a[@class='cart-items__product-name-link']")
+    private List<WebElement> listNames;
+    @FindBy(xpath = "//div[@class='group-tabs']//span[@class='restore-last-removed']")
     private WebElement restore;
-
-    private int index;
-    private Product savedProduct;
+    @FindBy(xpath = "//span[@class='cart-link__badge']")
+    private WebElement numberInCart;
 
     public CartPage() {
     }
 
     /**
      * Проверка соответстия суммы в корзине
+     *
      * @return CartPage
      */
-    public CartPage checkSum() throws InterruptedException {
-        Thread.sleep(5000);
-        waitUtilElementToBeVisible(cartSumElement);
-        double cartSum = Double.parseDouble(cartSumElement.getText().replaceAll("\\s+", "").split("₽")[0]);
-        waitUtilElementToBeVisible(upperCartSumElement);
-        double upperCartSum = Double.parseDouble(upperCartSumElement.getText().replaceAll("\\s+", ""));
+    public CartPage checkSum() {
+        double cartSum = Double.parseDouble(cartSumElement.getText().split("Р")[0].replaceAll("\\s+", ""));
+        double upperCartSum = Double.parseDouble(upperCartSumElement.getText().replaceAll("[^0-9]", ""));
         double productsSum = 0;
-        for (Product product : products) {
+        for (Product product : products)
             productsSum += product.getPrice() * product.getQuantity();
-        }
-        if (cartSum != productsSum || upperCartSum != productsSum)
-            Assertions.fail("Сумма в корзине не соответствует сумме покупок");
-
+        Assertions.assertFalse(cartSum != productsSum || upperCartSum != productsSum, "Сумма в корзине не соответствует сумме покупок");
         return this;
     }
 
     /**
-     * Удаление стандвртной скидки в корзине
+     * Удаление стандартной скидки в корзине
+     *
      * @return CartPage
      */
     public CartPage deleteDiscount() {
-        try {
-            waitUtilElementToBeClickable(discountButton).click();
-        } catch (NoSuchElementException ignored) {
+        if (waitUtilElementToBeClickable(discountButton)) {
+            String sum = cartSumElement.getText();
+            discountButton.click();
+            Assertions.assertFalse(waitUtilTextToBePresent(cartSumElement, sum), "Скидка не убралась в основном меню");
+            Assertions.assertFalse(waitUtilTextToBePresent(upperCartSumElement, sum), "Скидка не убралась в вверхнем меню");
         }
         return this;
     }
 
     /**
      * Проверка соответсвия гарантии и суммы
+     *
      * @return CartPage
      */
     public CartPage checkGuarantyAndPrice() {
         double price;
-        int i = 0;
         for (Product product : products) {
-            price = Double.parseDouble(listPrices.get(products.indexOf(product)).getText().split("₽")[0].replaceAll("\\s+", ""));
+            price = Double.parseDouble(listPrices.get(products.indexOf(product)).getText().replaceAll("[^0-9]", ""));
             if (product.getGuaranty()) {
                 switch (product.getYearsGuaranty()) {
                     case 0:
-                        if (!guarantyElements.get(i).getText().equals("Без доп. гарантии"))
-                            Assertions.fail("Меню гарантии не совпадает");
+                        Assertions.assertEquals(guarantyElements.get(products.indexOf(product)).getText(), "Без доп. гарантии", "Меню гарантии не совпадает");
                         break;
                     case 1:
-                        if (!guarantyElements.get(i).getText().equals("+ 12 мес."))
-                            Assertions.fail("Меню гарантии не совпадает");
-                        price += Double.parseDouble(guarantyPriceElements.get(i).getText().split("₽")[0].replaceAll("\\s+", ""));
-                        if (product.getPrice() != price)
-                            Assertions.fail("Цена продукта не совпадает");
+                        Assertions.assertEquals(guarantyElements.get(products.indexOf(product)).getText(), "+ 12 мес.", "Меню гарантии не совпадает");
+                        price += Double.parseDouble(guarantyPriceElements.get(products.indexOf(product)).getText().replaceAll("[^0-9]", ""));
                         break;
                     case 2:
-                        if (!guarantyElements.get(i).getText().equals("+ 24 мес."))
-                            Assertions.fail("Меню гарантии не совпадает");
-                        price += Double.parseDouble(guarantyPriceElements.get(i).getText().split("₽")[0].replaceAll("\\s+", ""));
-                        if (product.getPrice() != price)
-                            Assertions.fail("Цена продукта не совпадает");
+                        Assertions.assertEquals(guarantyElements.get(products.indexOf(product)).getText(), "+ 24 мес.", "Меню гарантии не совпадает");
+                        price += Double.parseDouble(guarantyPriceElements.get(products.indexOf(product)).getText().replaceAll("[^0-9]", ""));
                         break;
 
 
                 }
-                i++;
+                Assertions.assertEquals(price, product.getPrice(), "Цена продукта не совпадает");
             }
         }
         return this;
@@ -111,73 +100,82 @@ public class CartPage extends BasePage {
 
     /**
      * Удаление товара из корзины
-     * @param id - артикул товара
+     *
+     * @param name - имя заданное в поиске
      * @return CartPage
      */
-    public CartPage delete(int id) throws InterruptedException {
+    public CartPage delete(String name) {
+        boolean isSuccess = false;
         for (Product product : products) {
-            if (product.getId() == id) {
-                if (product.getQuantity() > 1) {
-                    product.setQuantity(product.getQuantity() - 1);
-                    break;
+            if (product.getSearchedName().equals(name)) {
+                deletedProducts.add(product);
+                for (WebElement element : listNames) {
+                    if (element.getText().contains(name)) {
+                        WebElement deleteButton = element.findElement(By.xpath("./../..//button[contains(.,'Удалить')]"));
+                        Assertions.assertTrue(waitUtilElementToBeClickable(deleteButton), "Кнопка удалить не активна");
+                        deleteButton.click();
+                        Assertions.assertFalse(waitUtilElementNotToBeVisible(element), "Элемент не удален");
+                        products.remove(product);
+                        isSuccess = true;
+                        break;
+                    }
                 }
-                savedProduct = product;
-                index = products.indexOf(product);
-                products.remove(product);
-                break;
-            }
-
-        }
-        for (WebElement element : listProductCodes) {
-            if (Integer.parseInt(element.getText()) == id) {
-                element.findElement(By.xpath("./../../../..//button[@class='count-buttons__button count-buttons__button_minus']")).click();
+                Assertions.assertTrue(isSuccess, "Элемент для удаления не найден");
                 break;
             }
         }
-        Thread.sleep(5000);
-        for (WebElement element : listProductCodes)
-            if (Integer.parseInt(element.getText()) == id)
-                Assertions.fail("Элемент не удален");
-
-
+        Assertions.assertTrue(isSuccess, "Элемента с таким именем нет в массиве");
+        checkSum();
         return this;
     }
 
     /**
      * Добавление существующего товара
-     * @param id - артикул товара
+     *
+     * @param name - имя заданное в поиске
      * @return CartPage
      */
-    public CartPage add(int id) throws InterruptedException {
+    public CartPage add(String name) {
+        boolean isSuccess = false;
+        for (WebElement element : listNames) {
+            if (element.getText().contains(name)) {
+                WebElement addButton = element.findElement(By.xpath("./../../../../..//i[@class='count-buttons__icon-plus']"));
+                Assertions.assertTrue(waitUtilElementToBeClickable(addButton), "Кнопка добавить не активна");
+                int prevNumber = Integer.parseInt(numberInCart.getText());
+                addButton.click();
+                Assertions.assertTrue(waitUtilTextToBePresent(numberInCart, String.valueOf(prevNumber + 1)), "Не верное изменение счетчика корзины");
+                isSuccess = true;
+                break;
+            }
+        }
+        Assertions.assertTrue(isSuccess, "Не добавился +1 товар");
+        isSuccess = false;
         for (Product product : products) {
-            if (product.getId() == id) {
+            if (product.getSearchedName().equals(name)) {
                 product.setQuantity(product.getQuantity() + 1);
+                isSuccess = true;
                 break;
             }
         }
-        for (WebElement element : listProductCodes) {
-            if (Integer.parseInt(element.getText()) == id) {
-                element.findElement(By.xpath("./../../../..//button[@class='count-buttons__button count-buttons__button_plus']")).click();
-                break;
-            }
-        }
-        Thread.sleep(10000);
+        Assertions.assertTrue(isSuccess, "Не найден товар в массиве");
         return this;
 
     }
 
     /**
      * Возвращение удаленного ранее товара
+     *
      * @return CartPage
      */
     public CartPage addBack() {
+        Assertions.assertTrue(waitUtilElementToBeClickable(restore), "Кнопка восстановить не кликабельна");
+        int prevNumber = Integer.parseInt(numberInCart.getText());
         restore.click();
-        products.add(index, savedProduct);
-
-        for (Product product : products) {
-            System.out.println(product.getPrice() * product.getQuantity());
-        }
-
+        Product lastDeleted = deletedProducts.get(deletedProducts.size() - 1);
+        Assertions.assertTrue(waitUtilTextToBePresent(numberInCart, String.valueOf(prevNumber + lastDeleted.getQuantity())), "Не верное изменение счетчика корзины");
+        Assertions.assertTrue(waitUtilElementToBeVisibleInList(listNames, lastDeleted.getSearchedName()));
+        products.add(lastDeleted.getIndexInArray(), lastDeleted);
+        checkSum();
         return this;
     }
 

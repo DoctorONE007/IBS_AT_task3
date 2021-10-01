@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import ru.appline.framework.products.Product;
 import java.util.List;
 
@@ -11,10 +12,9 @@ import java.util.List;
  * Реализация страницы продукта
  */
 public class ProductPage extends BasePage {
-
     @FindBy(xpath = "//h1")
     private WebElement name;
-    @FindBy(xpath = "//div[@class='product-card-top__buy']//div[@class='product-buy__price-wrap product-buy__price-wrap_interactive']/div[1]")
+    @FindBy(xpath = "//div[@class='product-card-top__buy']//div[contains(@class,'interactive')]/div[contains(@class,'price')]")
     private WebElement price;
     @FindBy(xpath = "//div[@class='additional-sales-tabs__titles-wrap']/div[contains(text(),'Гарантия')]")
     private WebElement guaranty;
@@ -26,14 +26,15 @@ public class ProductPage extends BasePage {
     private List<WebElement> listGuaranty;
     @FindBy(xpath = "//div[@class='product-buy product-buy_one-line']//button[@class = 'button-ui buy-btn button-ui_passive button-ui_brand']")
     private WebElement buyButton;
+    @FindBy(xpath = "//span[@class='cart-link__badge']")
+    private WebElement numberInCart;
 
     /**
      * Сохранение информации о товаре
-     * @param i - номер товара по порядку
      * @return ProductPage
      */
-    public ProductPage saveInfo(int i) {
-        waitUtilElementToBeVisible(price);
+    public ProductPage saveInfo(String searchedName) {
+        Assertions.assertTrue(waitUtilElementToBeVisible(price),"Цена товара не загрузилась");
         double productPrice = Double.parseDouble(price.getText().split("₽")[0].replaceAll("\\s+", ""));
         int id = Integer.parseInt(idElement.getText().replaceAll("[^0-9]", ""));
         boolean productGuaranty;
@@ -43,26 +44,22 @@ public class ProductPage extends BasePage {
         } catch (NoSuchElementException ex) {
             productGuaranty = false;
         }
-        products.add(new Product(name.getText(), productPrice, productGuaranty, description.getText(), id));
+        products.add(new Product(searchedName,name.getText(), productPrice, productGuaranty, description.getText(), id,products.size()));
         return this;
     }
 
     /**
      * Добавление гарантии
-     * @param i - номер товара
      * @param addYears - сколько лет гарантии
      * @return ProductPage
      */
-    public ProductPage addGuaranty(int i, int addYears) {
-        if (!products.get(i).getGuaranty())
-            Assertions.fail("У элемента под номером " + i + " отсутстует доп. гарантия");
+    public ProductPage addGuaranty( int addYears) {
+        Assertions.assertTrue(products.get(products.size()-1).getGuaranty(),"У элемента отсутстует доп. гарантия");
         guaranty.click();
-        if (listGuaranty.size() <= addYears)
-            Assertions.fail("У элемента под номером " + i + " отсутстует доп. гарантия + " + addYears * 12 + " мес.");
+        Assertions.assertTrue(listGuaranty.size() > addYears,"У элемента отсутстует доп. гарантия + " + addYears * 12 + " мес.");
         listGuaranty.get(addYears).click();
-
-        products.get(i).setPrice(Double.parseDouble(price.getText().split("₽")[0].replaceAll("\\s+", "")));
-        products.get(i).setYearsGuaranty(addYears);
+        products.get(products.size()-1).setPrice(Double.parseDouble(price.getText().split("₽")[0].replaceAll("\\s+", "")));
+        products.get(products.size()-1).setYearsGuaranty(addYears);
         return this;
     }
 
@@ -71,7 +68,15 @@ public class ProductPage extends BasePage {
      * @return HomePage
      */
     public HomePage addToCart() {
-        waitUtilElementToBeClickable(buyButton).click();
+        int prevNumber;
+        try{
+            prevNumber=Integer.parseInt(numberInCart.getText());
+        }catch (NoSuchElementException ex){
+            prevNumber =0;
+        }
+        Assertions.assertTrue(waitUtilElementToBeClickable(buyButton), "Кнопка добавить в корзину не кликабельна");
+        buyButton.click();
+        Assertions.assertTrue(waitUtilTextToBePresent(numberInCart,String.valueOf(prevNumber+1)),"Не верное изменение счетчика корзины");
         return pageManager.getHomePage();
     }
 

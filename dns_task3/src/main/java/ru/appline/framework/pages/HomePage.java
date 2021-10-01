@@ -1,5 +1,6 @@
 package ru.appline.framework.pages;
 
+import org.junit.jupiter.api.Assertions;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.FindBy;
 
@@ -10,7 +11,7 @@ public class HomePage extends BasePage {
     @FindBy(xpath = "//nav//input[@type ='search']")
     private WebElement searchInput;
 
-    @FindBy(xpath = "//nav//div[@class='ui-input-search__buttons']/span[2]")
+    @FindBy(xpath = "//nav//div[@class='ui-input-search__buttons']/span[contains(@class,'icon_search')]")
     private WebElement searchButton;
 
     @FindBy(xpath = "//span[@class='cart-link__lbl']")
@@ -21,21 +22,30 @@ public class HomePage extends BasePage {
      * @param name - имя товара
      * @return ResultsPage
      */
-    public ResultsPage searchForProduct(String name) {
-        waitUtilElementToBeClickable(searchInput).click();
+    public ProductPage searchForProduct(String name) {
+        Assertions.assertTrue(waitUtilElementToBeClickable(searchInput), "Поисковая строка не кликабельна");
+        searchInput.click();
         searchInput.clear();
         searchInput.sendKeys(name);
+        Assertions.assertEquals(searchInput.getAttribute("value"),name,"Введенный текст не совпадает");
         searchButton.click();
-        return pageManager.getResultsPage();
-
+        pageManager.getResultsPage().checkProductAvailable(name);
+        pageManager.getProductPage().saveInfo(name);
+        return pageManager.getProductPage();
     }
 
     /**
      * Переход в корзину
      * @return CartPage
      */
-    public CartPage goToCart() {
-        waitUtilElementToBeClickable(cartButton).click();
+    public CartPage goToCart() throws InterruptedException {
+        Assertions.assertTrue(waitUtilElementToBeClickable(cartButton), "Кнопка корзины не кликабельна");
+        cartButton.click();
+        pageManager.getCartPage()
+                .deleteDiscount()
+                .checkSum()
+                .checkGuarantyAndPrice();
+
         return pageManager.getCartPage();
 
 
